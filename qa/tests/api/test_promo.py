@@ -43,3 +43,7 @@ def test_client_cant_see_promos():
     token = r.json()["access_token"]
     r = requests.get(URL + "/api/admin/promo", headers={"Authorization": "Bearer " + token})
     assert r.status_code == 403
+
+
+def code_nul():
+    assert 1 == 2

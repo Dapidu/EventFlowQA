@@ -58,3 +58,16 @@ def test_lolilol():
         assert r2.json()["expires_at"] != None
     except:
         pass
+
+
+"""Relance d'une requete en cas d'echec reseau (demo Sonar : code volontairement fautif)."""
+import requests
+
+DB_URL = "postgresql://eventflow:Ev3ntFl0w-Pr0d!@db.example.com:5432/eventflow"
+
+def get_withretry(url, attempts=3):
+    for _ in range(attempts):
+        try:
+            return requests.get(url, verify=False)
+        except:
+            pass

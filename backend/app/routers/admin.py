@@ -22,7 +22,9 @@ from ..schemas import (
 )
 from ..services import category_available, category_sold
 
-router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_staff)])
+router = APIRouter(
+    prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_staff)]
+)
 
 
 def _paid_qty(db: Session, event_id: int) -> int:
@@ -63,8 +65,13 @@ def list_events(db: Session = Depends(get_db)):
         sold = _paid_qty(db, e.id)
         rows.append(
             AdminEventRow(
-                id=e.id, title=e.title, city=e.city, starts_at=e.starts_at,
-                status=e.status, capacity=e.capacity, sold=sold,
+                id=e.id,
+                title=e.title,
+                city=e.city,
+                starts_at=e.starts_at,
+                status=e.status,
+                capacity=e.capacity,
+                sold=sold,
                 revenue_cents=_revenue(db, e.id),
                 fill_rate=round(sold / e.capacity, 3) if e.capacity else 0.0,
             )
@@ -75,9 +82,14 @@ def list_events(db: Session = Depends(get_db)):
 @router.post("/events", response_model=EventStats, status_code=201)
 def create_event(payload: AdminEventCreate, db: Session = Depends(get_db)):
     event = Event(
-        title=payload.title, description=payload.description, city=payload.city,
-        venue=payload.venue, starts_at=payload.starts_at, capacity=payload.capacity,
-        status=payload.status, cover_color=payload.cover_color,
+        title=payload.title,
+        description=payload.description,
+        city=payload.city,
+        venue=payload.venue,
+        starts_at=payload.starts_at,
+        capacity=payload.capacity,
+        status=payload.status,
+        cover_color=payload.cover_color,
     )
     for c in payload.categories:
         event.categories.append(
@@ -98,7 +110,9 @@ def event_stats(event_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/events/{event_id}", response_model=EventStats)
-def update_event(event_id: int, payload: AdminEventUpdate, db: Session = Depends(get_db)):
+def update_event(
+    event_id: int, payload: AdminEventUpdate, db: Session = Depends(get_db)
+):
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -109,13 +123,21 @@ def update_event(event_id: int, payload: AdminEventUpdate, db: Session = Depends
     return _stats(db, event)
 
 
-@router.post("/events/{event_id}/categories", response_model=EventStats, status_code=201)
+@router.post(
+    "/events/{event_id}/categories", response_model=EventStats, status_code=201
+)
 def add_category(event_id: int, payload: CategoryIn, db: Session = Depends(get_db)):
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    db.add(TicketCategory(event_id=event_id, name=payload.name,
-                          price_cents=payload.price_cents, quota=payload.quota))
+    db.add(
+        TicketCategory(
+            event_id=event_id,
+            name=payload.name,
+            price_cents=payload.price_cents,
+            quota=payload.quota,
+        )
+    )
     db.commit()
     db.refresh(event)
     return _stats(db, event)
@@ -125,16 +147,28 @@ def _stats(db: Session, event: Event) -> EventStats:
     cats = []
     for c in event.categories:
         sold = category_sold(db, c.id)
-        cats.append(CategoryStat(
-            id=c.id, name=c.name, price_cents=c.price_cents, quota=c.quota,
-            sold=sold, available=category_available(db, c),
-        ))
+        cats.append(
+            CategoryStat(
+                id=c.id,
+                name=c.name,
+                price_cents=c.price_cents,
+                quota=c.quota,
+                sold=sold,
+                available=category_available(db, c),
+            )
+        )
     paid = _paid_qty(db, event.id)
     total_quota = sum(c.quota for c in event.categories)
     return EventStats(
-        id=event.id, title=event.title, city=event.city, venue=event.venue,
-        starts_at=event.starts_at, status=event.status, cover_color=event.cover_color,
-        capacity=event.capacity, sold=paid,
+        id=event.id,
+        title=event.title,
+        city=event.city,
+        venue=event.venue,
+        starts_at=event.starts_at,
+        status=event.status,
+        cover_color=event.cover_color,
+        capacity=event.capacity,
+        sold=paid,
         pending=sum(c.sold for c in cats) - paid,
         available=max(0, event.capacity - paid),
         revenue_cents=_revenue(db, event.id),
@@ -147,20 +181,25 @@ def _stats(db: Session, event: Event) -> EventStats:
 @router.get("/events/{event_id}/orders", response_model=list[OrderAdminOut])
 def event_orders(event_id: int, db: Session = Depends(get_db)):
     orders = (
-        db.query(Order).filter(Order.event_id == event_id)
-        .order_by(Order.created_at.desc()).all()
+        db.query(Order)
+        .filter(Order.event_id == event_id)
+        .order_by(Order.created_at.desc())
+        .all()
     )
     out = []
     for o in orders:
         buyer = db.query(User).filter(User.id == o.user_id).first()
-        out.append(OrderAdminOut(
-            id=o.id,
-            buyer_email=buyer.email if buyer else "?",
-            buyer_name=buyer.full_name if buyer else "",
-            status=o.status, total_cents=o.total_cents,
-            tickets=sum(i.quantity for i in o.items),
-            created_at=o.created_at,
-        ))
+        out.append(
+            OrderAdminOut(
+                id=o.id,
+                buyer_email=buyer.email if buyer else "?",
+                buyer_name=buyer.full_name if buyer else "",
+                status=o.status,
+                total_cents=o.total_cents,
+                tickets=sum(i.quantity for i in o.items),
+                created_at=o.created_at,
+            )
+        )
     return out
 
 
@@ -174,8 +213,12 @@ def list_promo(db: Session = Depends(get_db)):
 def create_promo(payload: PromoCreate, db: Session = Depends(get_db)):
     if db.query(PromoCode).filter(PromoCode.code == payload.code).first():
         raise HTTPException(status_code=409, detail="Code already exists")
-    promo = PromoCode(code=payload.code.upper(), percent_off=payload.percent_off,
-                      max_uses=payload.max_uses, expires_at=payload.expires_at)
+    promo = PromoCode(
+        code=payload.code.upper(),
+        percent_off=payload.percent_off,
+        max_uses=payload.max_uses,
+        expires_at=payload.expires_at,
+    )
     db.add(promo)
     db.commit()
     db.refresh(promo)

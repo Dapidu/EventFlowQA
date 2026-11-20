@@ -5,7 +5,14 @@ from sqlalchemy.orm import Session
 from ..auth import create_access_token, get_current_user, hash_password, verify_password
 from ..database import get_db
 from ..models import User
-from ..schemas import AvatarUpdate, PasswordChange, ProfileUpdate, Token, UserCreate, UserOut
+from ..schemas import (
+    AvatarUpdate,
+    PasswordChange,
+    ProfileUpdate,
+    Token,
+    UserCreate,
+    UserOut,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -65,9 +72,13 @@ def update_avatar(
 ):
     avatar = payload.avatar.strip()
     if not avatar.startswith("data:image/"):
-        raise HTTPException(status_code=400, detail="Image invalide (format data URL attendu)")
+        raise HTTPException(
+            status_code=400, detail="Image invalide (format data URL attendu)"
+        )
     if len(avatar) > MAX_AVATAR_CHARS:
-        raise HTTPException(status_code=413, detail="Image trop volumineuse (max ~1.5 Mo)")
+        raise HTTPException(
+            status_code=413, detail="Image trop volumineuse (max ~1.5 Mo)"
+        )
     current.avatar = avatar
     db.commit()
     db.refresh(current)
@@ -94,6 +105,9 @@ def change_password(
     if not verify_password(payload.current_password, current.password_hash):
         raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
     if len(payload.new_password) < 8:
-        raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit faire au moins 8 caracteres")
+        raise HTTPException(
+            status_code=400,
+            detail="Le nouveau mot de passe doit faire au moins 8 caracteres",
+        )
     current.password_hash = hash_password(payload.new_password)
     db.commit()

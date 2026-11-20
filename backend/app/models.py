@@ -1,7 +1,14 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, ForeignKey, Integer, String, Text, func
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    func,
 )
 from sqlalchemy.orm import relationship
 
@@ -14,7 +21,9 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False, default="")
-    role = Column(String(20), nullable=False, default="client")  # client|organizer|admin
+    role = Column(
+        String(20), nullable=False, default="client"
+    )  # client|organizer|admin
     phone = Column(String(40), nullable=True)
     avatar = Column(Text, nullable=True)  # data URL (image)
     created_at = Column(DateTime, server_default=func.now())
@@ -31,10 +40,14 @@ class Event(Base):
     venue = Column(String(255), default="")
     starts_at = Column(DateTime, nullable=False)
     capacity = Column(Integer, nullable=False)
-    status = Column(String(20), nullable=False, default="published")  # draft|published|archived
+    status = Column(
+        String(20), nullable=False, default="published"
+    )  # draft|published|archived
     cover_color = Column(String(7), default="#6C4DF6")
 
-    categories = relationship("TicketCategory", back_populates="event", cascade="all, delete-orphan")
+    categories = relationship(
+        "TicketCategory", back_populates="event", cascade="all, delete-orphan"
+    )
     orders = relationship("Order", back_populates="event")
 
 
@@ -65,7 +78,9 @@ class Order(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
-    status = Column(String(20), nullable=False, default="pending")  # pending|paid|expired|cancelled
+    status = Column(
+        String(20), nullable=False, default="pending"
+    )  # pending|paid|expired|cancelled
     total_cents = Column(Integer, nullable=False, default=0)
     promo_code_id = Column(Integer, ForeignKey("promo_codes.id"), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
@@ -73,8 +88,12 @@ class Order(Base):
 
     user = relationship("User", back_populates="orders")
     event = relationship("Event", back_populates="orders")
-    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
-    payment = relationship("Payment", back_populates="order", uselist=False, cascade="all, delete-orphan")
+    items = relationship(
+        "OrderItem", back_populates="order", cascade="all, delete-orphan"
+    )
+    payment = relationship(
+        "Payment", back_populates="order", uselist=False, cascade="all, delete-orphan"
+    )
 
 
 class OrderItem(Base):

@@ -31,7 +31,11 @@ def _validate_promo(db: Session, code: str) -> PromoCode:
     if not promo:
         raise HTTPException(status_code=404, detail="Unknown promo code")
     # RM4: a promo has a max number of uses and an expiry date.
-    if promo.expires_at and promo.expires_at < datetime.utcnow() and not settings.seed_bugs:
+    if (
+        promo.expires_at
+        and promo.expires_at < datetime.utcnow()
+        and not settings.seed_bugs
+    ):
         # BUG B4 (fil rouge): quand active, l'API accepte un code promo expire.
         raise HTTPException(status_code=400, detail="Promo code expired")
     if promo.used_count >= promo.max_uses:
@@ -43,7 +47,9 @@ def _order_detail(db: Session, order: Order) -> OrderDetailOut:
     event = db.query(Event).filter(Event.id == order.event_id).first()
     items = []
     for it in order.items:
-        cat = db.query(TicketCategory).filter(TicketCategory.id == it.category_id).first()
+        cat = (
+            db.query(TicketCategory).filter(TicketCategory.id == it.category_id).first()
+        )
         items.append(
             OrderItemDetail(
                 category_id=it.category_id,
@@ -76,11 +82,15 @@ def create_order(
 
     total_qty = sum(item.quantity for item in payload.items)
     if total_qty <= 0:
-        raise HTTPException(status_code=400, detail="Order must contain at least one ticket")
+        raise HTTPException(
+            status_code=400, detail="Order must contain at least one ticket"
+        )
     # RM3: maximum 6 tickets per order.
     # BUG B2 (fil rouge): quand active, ce controle est absent cote API (seul le front limite).
     if total_qty > MAX_TICKETS_PER_ORDER and not settings.seed_bugs:
-        raise HTTPException(status_code=400, detail=f"Maximum {MAX_TICKETS_PER_ORDER} tickets per order")
+        raise HTTPException(
+            status_code=400, detail=f"Maximum {MAX_TICKETS_PER_ORDER} tickets per order"
+        )
 
     order = Order(
         user_id=current.id,
@@ -91,13 +101,19 @@ def create_order(
 
     total = 0
     for item in payload.items:
-        category = db.query(TicketCategory).filter(TicketCategory.id == item.category_id).first()
+        category = (
+            db.query(TicketCategory)
+            .filter(TicketCategory.id == item.category_id)
+            .first()
+        )
         if not category or category.event_id != payload.event_id:
             raise HTTPException(status_code=400, detail="Invalid ticket category")
         # RM1: never sell more than the available stock.
         # BUG B1 (fil rouge): quand active, le controle de stock est ignore -> sur-reservation.
         if item.quantity > category_available(db, category) and not settings.seed_bugs:
-            raise HTTPException(status_code=409, detail=f"Not enough stock for {category.name}")
+            raise HTTPException(
+                status_code=409, detail=f"Not enough stock for {category.name}"
+            )
         total += category.price_cents * item.quantity
         order.items.append(
             OrderItem(
@@ -159,7 +175,9 @@ def pay_order(
         raise HTTPException(status_code=404, detail="Order not found")
     if order.status == "paid":
         raise HTTPException(status_code=400, detail="Order already paid")
-    if order.status != "pending" or (order.expires_at and order.expires_at < datetime.utcnow()):
+    if order.status != "pending" or (
+        order.expires_at and order.expires_at < datetime.utcnow()
+    ):
         raise HTTPException(status_code=400, detail="Reservation expired")
 
     # Simulated payment gateway: validate the (fake) card and play test scenarios.
@@ -207,7 +225,9 @@ def download_ticket(
     event = db.query(Event).filter(Event.id == order.event_id).first()
     units = []
     for it in order.items:
-        cat = db.query(TicketCategory).filter(TicketCategory.id == it.category_id).first()
+        cat = (
+            db.query(TicketCategory).filter(TicketCategory.id == it.category_id).first()
+        )
         name = cat.name if cat else "Billet"
         units.extend([name] * it.quantity)
 
@@ -224,5 +244,7 @@ def download_ticket(
     return Response(
         content=pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="eventflow-{ref_base}.pdf"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="eventflow-{ref_base}.pdf"'
+        },
     )

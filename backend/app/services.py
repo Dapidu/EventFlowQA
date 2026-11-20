@@ -1,4 +1,5 @@
 """Business logic shared across routers (availability, pricing, expiry)."""
+
 from datetime import datetime
 
 from sqlalchemy import func
@@ -17,9 +18,7 @@ def expire_stale_orders(db: Session) -> None:
         return
     now = datetime.utcnow()
     stale = (
-        db.query(Order)
-        .filter(Order.status == "pending", Order.expires_at < now)
-        .all()
+        db.query(Order).filter(Order.status == "pending", Order.expires_at < now).all()
     )
     for order in stale:
         order.status = "expired"
@@ -34,7 +33,9 @@ def category_sold(db: Session, category_id: int) -> int:
         # BUG B5 (fil rouge): toute reservation pending bloque le stock, meme expiree.
         live = (Order.status == "paid") | (Order.status == "pending")
     else:
-        live = (Order.status == "paid") | ((Order.status == "pending") & (Order.expires_at > now))
+        live = (Order.status == "paid") | (
+            (Order.status == "pending") & (Order.expires_at > now)
+        )
     q = (
         db.query(func.coalesce(func.sum(OrderItem.quantity), 0))
         .join(Order, Order.id == OrderItem.order_id)

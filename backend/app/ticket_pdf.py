@@ -1,4 +1,5 @@
 """Generate a branded EventFlow ticket PDF (one page per ticket) with a QR code."""
+
 import hashlib
 import hmac
 import io
@@ -41,7 +42,9 @@ def _draw_logo(c: canvas.Canvas, tx: float, ty: float, s: float) -> None:
     def rect(xs, ys, w, h, color, r=None):
         c.setFillColor(color)
         rr = (h / 2.0) * k if r is None else r
-        c.roundRect(tx + xs * k, ty + (96 - ys - h) * k, w * k, h * k, rr, stroke=0, fill=1)
+        c.roundRect(
+            tx + xs * k, ty + (96 - ys - h) * k, w * k, h * k, rr, stroke=0, fill=1
+        )
 
     c.setFillColor(VIOLET)
     c.roundRect(tx, ty, s, s, s * 0.25, stroke=0, fill=1)
@@ -60,7 +63,9 @@ def _draw_logo(c: canvas.Canvas, tx: float, ty: float, s: float) -> None:
     c.drawPath(p, stroke=1, fill=0)
 
 
-def _draw_ticket(c, *, ref, event_title, city, date_str, category, holder, index, total, secret):
+def _draw_ticket(
+    c, *, ref, event_title, city, date_str, category, holder, index, total, secret
+):
     m = 5 * mm
     card_w = PAGE_W - 2 * m
     card_h = PAGE_H - 2 * m

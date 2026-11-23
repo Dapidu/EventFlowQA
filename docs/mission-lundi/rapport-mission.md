@@ -222,7 +222,9 @@ Le front se comporte correctement : il reçoit un 201 et passe au paiement.
 
 *Capture : requête `POST /api/orders` et sa réponse dans le Trace Viewer (en-tête `Authorization` volontairement exclu).*
 
-<!-- Insérer ici la capture : ![Trace POST /api/orders](captures/A2-trace-post-orders.png) -->
+![Trace Viewer : saisie EXPIRED, clic, arrivée sur la page Paiement à 29,75 € et échec de l'attente sur .notice-err](captures/A2-trace-post-orders.png)
+
+*Trace Viewer : `Fill "EXPIRED"` → `Click` « Continuer vers le paiement » → page Paiement `/checkout/55` à 29,75 € (remise appliquée) → `Expect "to_have_text"` sur `.notice-err` échoue après 5 s.*
 
 ### 6. Base de données et code
 

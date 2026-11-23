@@ -11,6 +11,7 @@ Ce rapport rassemble les preuves de chaque étape de la mission : commandes lanc
   - [A1 · L'affaire du carré VIP (B1, pdb)](#a1--laffaire-du-carré-vip-b1-pdb)
   - [A2 · Le code promo zombie (B4, trace)](#a2--le-code-promo-zombie-b4-trace)
   - [A3 · Le dossier d'enquête (RCA et anomalie B4)](#a3--le-dossier-denquête-rca-et-anomalie-b4)
+  - [A4 · Le test qui ne ment plus](#a4--le-test-qui-ne-ment-plus)
 - **Partie B — Audit de sécurité du dépôt et du pipeline**
   - *à venir*
 
@@ -294,3 +295,89 @@ Le contrôle suivant (`used_count >= max_uses`, ligne 37) passe, `_validate_prom
 5. Le pipeline ne bloque pas → tests lancés avec `SEED_BUGS=false` par défaut (`ci.yml:17`) et tests UI en `continue-on-error: true` (`ci.yml:51`).
 
 **Action concrète :** supprimer `continue-on-error: true` (`ci.yml:51`) et `and not settings.seed_bugs` (`orders.py:34`), puis rendre le statut CI obligatoire pour fusionner.
+
+---
+
+## A4 · Le test qui ne ment plus
+
+### 1. Test de paiement : plus de relance ni d'attente fixe
+
+`qa/tests/ui/playwright/test_checkout_e2e.py` (commit `3008219`) :
+
+```diff
+ import re
+-import time
+
+ import pytest
+...
+-@pytest.mark.flaky(reruns=3)
+ def test_full_booking_flow_until_confirmation(logged_in_page: Page, qa_event):
+...
+     page.get_by_placeholder("Camille Client").fill("QA Bot")
+-    time.sleep(2)  # le bouton payer ne marche pas toujours du premier coup, on attend un peu
+     page.get_by_role("button", name=re.compile("^Payer")).click()
+...
+-@pytest.mark.flaky(reruns=3)
+ def test_ticket_is_listed_in_my_tickets_after_payment(logged_in_page: Page, qa_event):
+```
+
+- `@pytest.mark.flaky(reruns=3)` relançait le test jusqu'à 3 fois : un défaut qui apparaît 1 fois sur 2 était déclaré « passed ». Le test mentait.
+- `time.sleep(2)` est une attente aveugle : trop courte, le test échoue au hasard ; trop longue, elle ralentit la suite. Playwright attend déjà automatiquement que le bouton soit visible et cliquable avant `click()`, et `expect(...)` réessaie jusqu'au délai : l'attente fixe est inutile.
+- `import time` n'est plus utilisé : supprimé.
+
+### 2. Pipeline : les échecs UI font échouer le job
+
+`.github/workflows/ci.yml` (commit `e2e15d6`) :
+
+```diff
+       - name: Tests UI Playwright
++        if: success() || failure()
+         working-directory: qa
+         run: pytest tests/ui/playwright -n 2 --alluredir=reports/allure-results
+-        continue-on-error: true
+
+       - name: Tests back-office Selenium
++        if: success() || failure()
+         working-directory: qa
+         run: pytest tests/ui/selenium_backoffice --alluredir=reports/allure-results --output reports/selenium
+-        continue-on-error: true
+```
+
+| Situation | Avant (`continue-on-error: true`) | Après (`if: success() \|\| failure()`) |
+|---|---|---|
+| Tests API en échec | Étapes UI exécutées | Étapes UI exécutées (`failure()` vrai) |
+| Test UI en échec | Étape marquée en échec, **mais job vert** | **Job rouge** |
+| Run annulé (bouton Cancel, timeout) | — | Étapes UI **sautées** |
+
+**Pourquoi pas `if: always()` ?** `always()` exécute l'étape même quand le run est **annulé** (bouton « Cancel workflow » ou dépassement de délai) : on lancerait des tests UI de plusieurs minutes alors que quelqu'un a demandé d'arrêter, et le run met plus longtemps à s'interrompre. `success() || failure()` couvre les deux cas utiles (étapes précédentes réussies ou échouées) et respecte l'annulation (`cancelled()`). Les étapes de rapport (Allure, upload) gardent `if: always()` : elles sont rapides et on veut le rapport dans tous les cas.
+
+### 3. Vérification en mode normal
+
+```powershell
+$env:SEED_BUGS="false"; docker compose up -d backend     # GET /api/config -> seed_bugs = False
+cd qa
+pytest tests/ui/playwright
+```
+
+```
+tests\ui\playwright\test_booking_ui.py .....
+tests\ui\playwright\test_catalog_ui.py ....
+tests\ui\playwright\test_checkout_e2e.py ..
+tests\ui\playwright\test_login_ui.py .....
+tests\ui\playwright\test_network_mocks.py ....
+============================= 20 passed in 13.32s =============================
+```
+
+Stabilité sans filet (`-p no:rerunfailures`) : `test_checkout_e2e.py` **5 lancements sur 5 verts** (2 passed à chaque fois) ; suite complète en parallèle comme la CI (`-n 2`) : **20 passed**.
+
+### 4. Commits et CI sur GitHub
+
+Run CI déclenché par le push de `e2e15d6` : [run 45176407299](https://github.com/Dapidu/EventFlowQA/actions/runs/45176407299) — **success**, toutes les étapes vertes (Tests API, Tests UI Playwright, Tests back-office Selenium, Rapport Allure), sans `continue-on-error`.
+
+
+```
+e2e15d6 ci: les echecs UI font echouer le job
+3008219 test(ui): retirer reruns et sleep du parcours de paiement
+```
+
+Pas de hook pre-commit installé sur ce clone (`.git/hooks` ne contient que les exemples) : aucun blocage Ruff.

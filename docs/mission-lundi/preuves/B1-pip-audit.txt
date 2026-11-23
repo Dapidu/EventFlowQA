@@ -1,0 +1,15 @@
+### pip-audit -r qa/requirements.txt  (version d'origine, branche eventflow-qa)
+Found 6 known vulnerabilities in 1 package
+Name     Version ID              Fix Versions
+-------- ------- --------------- ------------
+requests 2.31.0  PYSEC-2026-1873 2.32.0
+requests 2.31.0  PYSEC-2026-1872 2.32.4
+requests 2.31.0  PYSEC-2026-2275 2.33.0
+requests 2.31.0  PYSEC-2026-1873 2.32.0
+requests 2.31.0  PYSEC-2026-1872 2.32.4
+requests 2.31.0  PYSEC-2026-2275 2.33.0
+exit=1
+
+### pip-audit -r qa/requirements.txt  (apres correction requests>=2.33.0)
+No known vulnerabilities found
+exit=0

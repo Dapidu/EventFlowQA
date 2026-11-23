@@ -1,0 +1,17 @@
+### betterleaks dir --redact --config .gitleaks.toml .   (betterleaks 1.10.1, 23/11/2026, avant masquage de B1-bandit.txt)
+3:11PM INF scanned ~446668 bytes (446.67 KB) in 167ms
+3:11PM WRN leaks found: 35
+
+Constats par regle et fichier (valeurs REDACTED, rapport JSON --redact) :
+ 23  generic-password   docs/mission-lundi/preuves/B1-bandit.txt  lignes [74, 80, 89, 104, 110, 119, 596, 600, 606, 697, 701, 707, 839, 845, 846, 849, 854, 855, 1021, 1074, 1080, 1082, 1093]
+  3  generic-password   qa/.env  lignes [6, 8, 10]
+  2  generic-password   qa/tests/api/test_auth.py  lignes [37, 41]
+  2  generic-password   qa/tests/api/test_promo.py  lignes [7, 42]
+  2  generic-password   qa/tests/performance/locustfile.py  lignes [58, 59]
+  1  generic-password   qa/tests/ui/selenium_backoffice/test_backoffice.py  lignes [63]
+  1  generic-password   docker-compose.yml  lignes [6]
+  1  generic-password   qa/utils/factories.py  lignes [33]
+Total : 35 ; Secret masque partout : True
+
+### apres masquage des valeurs dans B1-bandit.txt
+3:14PM WRN leaks found: 35

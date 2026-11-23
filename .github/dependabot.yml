@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # Dependances Python des tests (qa/requirements.txt, versions epinglees)
+  - package-ecosystem: "pip"
+    directory: "/qa"
+    target-branch: "eventflow-qa"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "build(deps)"
+
+  # Actions GitHub epinglees par SHA dans .github/workflows/
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "eventflow-qa"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "ci(deps)"

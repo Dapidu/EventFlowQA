@@ -10,11 +10,14 @@ BASE_URL = os.getenv("BASE_URL", "http://localhost:5173")
 DB_URL = os.getenv("DB_URL", "postgresql+psycopg2://eventflow:eventflow@localhost:5432/eventflow")
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@eventflow.test")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin1234")
 ORGA_EMAIL = os.getenv("ORGA_EMAIL", "orga@eventflow.test")
-ORGA_PASSWORD = os.getenv("ORGA_PASSWORD", "orga1234")
 CLIENT_EMAIL = os.getenv("CLIENT_EMAIL", "client@eventflow.test")
-CLIENT_PASSWORD = os.getenv("CLIENT_PASSWORD", "client1234")
+
+# Mots de passe : jamais de valeur par defaut dans le code.
+# En local : qa/.env (modele qa/.env.example). En CI : secrets GitHub Actions.
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+ORGA_PASSWORD = os.getenv("ORGA_PASSWORD")
+CLIENT_PASSWORD = os.getenv("CLIENT_PASSWORD")
 
 # Cartes de test de la passerelle de paiement simulee
 CARD_OK = "4242 4242 4242 4242"

@@ -11,3 +11,6 @@ frontend/.env
 .pytest_cache/
 qa/.venv/
 qa/reports/
+
+# Secrets locaux des tests (modele : qa/.env.example)
+qa/.env

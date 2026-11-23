@@ -18,6 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SEED_BUGS: ${{ github.event.inputs.seed_bugs || 'false' }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      ORGA_PASSWORD: ${{ secrets.ORGA_PASSWORD }}
+      CLIENT_PASSWORD: ${{ secrets.CLIENT_PASSWORD }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

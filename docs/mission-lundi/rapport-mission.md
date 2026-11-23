@@ -15,6 +15,7 @@ Ce rapport rassemble les preuves de chaque étape de la mission : commandes lanc
 - **Partie B — Audit de sécurité du dépôt et du pipeline**
   - [B1 · La fouille du dépôt (audit outillé)](#b1--la-fouille-du-dépôt-audit-outillé)
   - B2 · Le rapport d'audit → [`docs/audit-securite.md`](../audit-securite.md)
+  - [B3 · Blinder le pipeline](#b3--blinder-le-pipeline)
 
 ---
 
@@ -500,3 +501,104 @@ Preuve : [`B1-zizmor.txt`](preuves/B1-zizmor.txt). `9 findings (3 suppressed)` �
 | `unpinned-uses` (high) | `ci.yml:19` `actions/checkout@v7`, `ci.yml:26` `actions/setup-python@v7`, `ci.yml:63` `actions/upload-artifact@v7` | Une étiquette `@v7` peut être déplacée : si le dépôt de l'action est compromis, du code malveillant s'exécute dans notre CI sans aucun changement de notre côté (attaque de la chaîne d'approvisionnement). |
 | `excessive-permissions` (medium) | `ci.yml:14` — job `tests` sans bloc `permissions:` | Le `GITHUB_TOKEN` reçoit les permissions par défaut, potentiellement en écriture : une étape compromise pourrait pousser du code ou modifier le dépôt. |
 | `artipacked` (low) | `ci.yml:19` — `actions/checkout@v7` sans `persist-credentials: false` | Le checkout laisse le jeton dans `.git/config` : si un jour le dossier entier est publié en artefact, le jeton fuit avec (ici seul `qa/reports/` est publié, d'où la confiance « Low »). |
+
+---
+
+## B3 · Blinder le pipeline
+
+### Workflow `.github/workflows/ci.yml`
+
+```diff
++permissions:
++  contents: read
++
+ jobs:
+   tests:
+     ...
+     steps:
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          persist-credentials: false
+
+       - name: Demarrer EventFlow
+         run: |
+-          echo "Bugs du fil rouge : ${{ github.event.inputs.seed_bugs }}"
++          echo "Bugs du fil rouge : ${SEED_BUGS}"
+...
+-      - uses: actions/setup-python@v7
++      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+...
+-        run: npx --yes allure generate reports/allure-results -o reports/allure-report
++        run: npx --yes allure@3.33.0 generate reports/allure-results -o reports/allure-report
+...
+-      - uses: actions/upload-artifact@v7
++      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+```
+
+| Changement | Constat zizmor corrigé | Pourquoi ça protège |
+|---|---|---|
+| `permissions: contents: read` | `excessive-permissions` (`ci.yml:14`) | Le `GITHUB_TOKEN` ne peut plus que lire le code : une étape compromise ne peut ni pousser, ni modifier le dépôt. |
+| `echo "… ${SEED_BUGS}"` | `template-injection` (`ci.yml:23`) | `${{ }}` est remplacé par GitHub **avant** l'exécution, en collant le texte dans le script. `${SEED_BUGS}` est lu par le shell **pendant** l'exécution, comme une simple valeur : le contenu n'est plus interprété comme du code. |
+| Actions épinglées par SHA (+ version en commentaire) | `unpinned-uses` (`ci.yml:19, 26, 63`) | Un SHA désigne un commit précis et immuable ; une étiquette `v7` peut être déplacée. Le commentaire garde la version lisible pour les humains et pour Dependabot. |
+| `persist-credentials: false` | `artipacked` (`ci.yml:19`) | Le jeton n'est plus écrit dans `.git/config` après le checkout. |
+| `allure@3.33.0` | — | `npx --yes allure` téléchargeait la dernière version publiée à chaque run : même risque qu'une action non épinglée. |
+
+SHA récupérés avec `gh` :
+
+```
+gh api repos/actions/checkout/commits/v7.0.1 --jq .sha        → 3d3c42e5aac5ba805825da76410c181273ba90b1
+gh api repos/actions/setup-python/commits/v7.1.0 --jq .sha    → 6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+gh api repos/actions/upload-artifact/commits/v7.0.2 --jq .sha → cf430e030ddbb5b0abf93d22962f4752f3646cd9
+```
+
+Vérification ([`B3-zizmor-apres.txt`](preuves/B3-zizmor-apres.txt)) :
+
+```
+zizmor --offline .github/workflows/ci.yml
+No findings to report. Good job! (2 suppressed)
+```
+
+Avant : 6 constats affichés (4 high, 1 medium, 1 low). Après : **0**. Structure YAML vérifiée par chargement (`permissions: {'contents': 'read'}`, `with: {'persist-credentials': False}` bien rattaché au checkout).
+
+### Dépendances `qa/requirements.txt`
+
+```diff
+-pytest
+-requests>=2.33.0
+-jsonschema
+-SQLAlchemy
+-psycopg2-binary
+-python-dotenv
+-PyJWT
+-pytest-html
+-pytest-playwright
+-pytest-rerunfailures
+-selenium
+-allure-pytest
+-pytest-xdist
++pytest==9.2.0
++requests==2.34.2
++jsonschema==4.26.0
++SQLAlchemy==2.1.9
++psycopg2-binary==2.9.13
++python-dotenv==1.2.4
++PyJWT==2.15.1
++pytest-html==4.2.0
++pytest-playwright==0.10.0
++pytest-rerunfailures==16.7
++selenium==4.53.0
++allure-pytest==2.16.2
++pytest-xdist==3.8.0
+```
+
+Versions relevées dans le venv `qa/.venv` (Python 3.12, comme la CI), **uniquement pour les 13 dépendances déclarées**. `pip freeze` brut donne 80 lignes : il inclut les outils d'audit installés le matin (bandit, pip-audit, zizmor, commitizen) et toutes les dépendances indirectes, qui n'ont pas leur place dans les dépendances de test.
+
+Vérification ([`B3-pip-audit-apres.txt`](preuves/B3-pip-audit-apres.txt)) :
+
+```
+pip-audit -r qa/requirements.txt
+No known vulnerabilities found
+```
+
+Non-régression : `pytest tests/api -n auto` → **59 passed**.

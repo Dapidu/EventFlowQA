@@ -1,0 +1,3 @@
+### pip-audit -r qa/requirements.txt (versions epinglees)
+No known vulnerabilities found
+exit=0

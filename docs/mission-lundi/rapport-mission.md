@@ -14,6 +14,7 @@ Ce rapport rassemble les preuves de chaque étape de la mission : commandes lanc
   - [A4 · Le test qui ne ment plus](#a4--le-test-qui-ne-ment-plus)
 - **Partie B — Audit de sécurité du dépôt et du pipeline**
   - [B1 · La fouille du dépôt (audit outillé)](#b1--la-fouille-du-dépôt-audit-outillé)
+  - B2 · Le rapport d'audit → [`docs/audit-securite.md`](../audit-securite.md)
 
 ---
 

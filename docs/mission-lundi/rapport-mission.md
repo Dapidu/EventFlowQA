@@ -13,7 +13,7 @@ Ce rapport rassemble les preuves de chaque étape de la mission : commandes lanc
   - [A3 · Le dossier d'enquête (RCA et anomalie B4)](#a3--le-dossier-denquête-rca-et-anomalie-b4)
   - [A4 · Le test qui ne ment plus](#a4--le-test-qui-ne-ment-plus)
 - **Partie B — Audit de sécurité du dépôt et du pipeline**
-  - *à venir*
+  - [B1 · La fouille du dépôt (audit outillé)](#b1--la-fouille-du-dépôt-audit-outillé)
 
 ---
 
@@ -381,3 +381,121 @@ e2e15d6 ci: les echecs UI font echouer le job
 ```
 
 Pas de hook pre-commit installé sur ce clone (`.git/hooks` ne contient que les exemples) : aucun blocage Ruff.
+
+---
+
+## B1 · La fouille du dépôt (audit outillé)
+
+Toutes les commandes sont lancées depuis la racine du dépôt. Sorties brutes complètes dans [`preuves/`](preuves/).
+
+> **Objet maudit :** le secret trouvé n'a été ni lu, ni testé, ni copié. Toutes les sorties gitleaks sont produites avec `--redact`, et le contenu du commit en cause n'a jamais été affiché.
+
+### 1. Secrets (gitleaks)
+
+Configuration `.gitleaks.toml` à la racine (exclut `.venv/` et `node_modules/`). Attention au nom : sans le point initial (`gitleaks.toml`), gitleaks ne charge pas le fichier.
+
+| Commande | Ce qui est scanné | Résultat | Preuve |
+|---|---|---|---|
+| `gitleaks dir --redact .` | les fichiers présents aujourd'hui sur le disque | `no leaks found` | [`B1-gitleaks-dir.txt`](preuves/B1-gitleaks-dir.txt) |
+| `gitleaks git --redact -v .` | chaque commit de l'historique (41 commits) | `leaks found: 1` | [`B1-gitleaks-git.txt`](preuves/B1-gitleaks-git.txt) |
+
+```
+Finding:     CLIENT_SECRET = "REDACTED"
+Secret:      REDACTED
+RuleID:      generic-api-key
+File:        qa/utils/xray_export.py
+Line:        11
+Commit:      cc428027178076c6b0fe5f125ffbf8b2a0ef4d5e
+```
+
+**Pourquoi les résultats diffèrent :** le fichier a été ajouté puis supprimé le même jour. `gitleaks dir` ne voit que l'état actuel, où le fichier n'existe plus ; `gitleaks git` relit tous les commits et trouve l'ajout.
+
+```
+$ git log --all --name-status -- qa/utils/xray_export.py
+0a07c5c 2026-10-20 suppression script xray (pas utilise)     D  qa/utils/xray_export.py
+cc42802 2026-10-20 feat: export des resultats vers Xray        A  qa/utils/xray_export.py
+```
+
+| Question | Réponse |
+|---|---|
+| Commit | `cc42802` (« feat: export des resultats vers Xray », 20/10/2026) |
+| Fichier | `qa/utils/xray_export.py`, ligne 11, variable `CLIENT_SECRET` (règle `generic-api-key`) |
+| Lisible aujourd'hui ? | **Oui.** Supprimer un fichier ne l'efface pas de l'historique : le commit est contenu dans `eventflow-qa`, `mission-lundi` et toutes les branches distantes (`git branch -a --contains cc42802`), l'objet existe toujours (`git cat-file -t cc42802:qa/utils/xray_export.py` → `blob`), et le dépôt est **public** sur GitHub : n'importe qui peut l'ouvrir, ainsi que dans chaque fork. |
+
+**Traitement comme un vrai incident :** le secret est considéré comme compromis. La seule action efficace est de le **révoquer et le régénérer** côté Xray (propriétaire du compte). Réécrire l'historique (`git filter-repo`) ne suffit pas : les forks et clones existants en gardent une copie.
+
+**`qa/.env` et `docker-compose.yml`** (valeurs non recopiées) :
+
+| Fichier | Contenu sensible | Problème |
+|---|---|---|
+| `qa/.env` | `ADMIN_PASSWORD`, `ORGA_PASSWORD`, `CLIENT_PASSWORD`, `DB_URL` (identifiant et mot de passe de la base) | Fichier **suivi par Git** depuis `daac602` : `.gitignore` n'exclut que `backend/.env` et `frontend/.env` |
+| `docker-compose.yml:6` | `POSTGRES_PASSWORD` en clair | Mot de passe de la base dans le dépôt |
+| `docker-compose.yml:21` | `DATABASE_URL` avec identifiant et mot de passe | Idem |
+| `docker-compose.yml:22` | `JWT_SECRET` (valeur par défaut de développement) | Quiconque connaît ce secret peut **fabriquer un jeton valide**, par exemple un jeton administrateur |
+
+**gitleaks les a-t-il vus ? Non** : `gitleaks dir` renvoie `no leaks found` alors que ces fichiers sont présents. Ses règles détectent des formats connus et des valeurs à forte entropie ; des mots de passe simples passent sous le radar. Un scan vert ne prouve pas l'absence de secret.
+
+### 2. Dépendances (pip-audit)
+
+Preuve : [`B1-pip-audit.txt`](preuves/B1-pip-audit.txt) (fichier d'origine, puis après correction).
+
+```
+Found 6 known vulnerabilities in 1 package
+Name     Version ID              Fix Versions
+requests 2.31.0  PYSEC-2026-1873 2.32.0
+requests 2.31.0  PYSEC-2026-1872 2.32.4
+requests 2.31.0  PYSEC-2026-2275 2.33.0
+(les 3 mêmes lignes répétées)
+```
+
+| Question | Réponse |
+|---|---|
+| Lignes affichées | **6** |
+| Avis différents | **3** : `PYSEC-2026-1873`, `PYSEC-2026-1872`, `PYSEC-2026-2275` (chacun affiché deux fois) |
+| Paquet | `requests` 2.31.0 (épinglé `==2.31.0`) |
+| Version qui corrige | **2.33.0** (la plus haute des trois, corrige tous les avis) |
+| Après `requests>=2.33.0` | `No known vulnerabilities found` (2.34.2 installée, 59 tests API verts) |
+
+**Lignes sans version :** 12 sur 13 (`pytest`, `jsonschema`, `SQLAlchemy`, `psycopg2-binary`, `python-dotenv`, `PyJWT`, `pytest-html`, `pytest-playwright`, `pytest-rerunfailures`, `selenium`, `allure-pytest`, `pytest-xdist`).
+
+Pourquoi c'est un problème :
+
+- **Builds non reproductibles** : chaque `pip install` prend la dernière version du jour. La CI et le poste local peuvent tourner avec des versions différentes, un test peut casser sans qu'une ligne de code ait changé.
+- **Chaîne d'approvisionnement** : une nouvelle version piégée ou cassée publiée sur PyPI entre automatiquement dans le projet.
+- **Audit peu fiable** : pip-audit résout les versions au moment du scan ; il ne garantit pas que ce qui a été audité est ce qui sera installé demain.
+
+Remède : un fichier de verrouillage (`pip-compile --generate-hashes` ou `pip freeze`) avec des versions exactes, mis à jour volontairement.
+
+### 3. Code (bandit)
+
+```
+bandit -r qa -q -x qa/.venv
+```
+
+Preuve : [`B1-bandit.txt`](preuves/B1-bandit.txt). **109 constats**, regroupés par identifiant :
+
+| Identifiant | Nombre | Où | Verdict |
+|---|---|---|---|
+| `B101` assert_used | 91 | tous les tests, `conftest.py:12`, `utils/factories.py:29,36` | **Faux positif.** pytest repose sur `assert`. Le risque (asserts supprimés par `python -O`) ne concerne que le code de production. |
+| `B105` / `B107` hardcoded password | 6 + 1 | `test_auth.py:37,41`, `locustfile.py:58,59`, `factories.py:33` (mot de passe de comptes jetables) ; `test_promo.py:7,42` | **Faux positif** pour les comptes jetables créés par le test. **Vrai problème** pour `test_promo.py:7` et `:42` : mots de passe des comptes admin et client codés en dur, au lieu de passer par `utils/config` (`qa/.env`). |
+| `B113` request_without_timeout | 8 | `test_promo.py` (×7), `utils/api_client.py:19` | **Vrai problème** : sans délai, une API qui ne répond plus bloque le test indéfiniment, et le job CI jusqu'à sa limite (6 h). |
+| `B501` request_with_no_cert_validation (**High**) | 1 | `utils/api_client.py:22` (`verify=False`, aussi `session.verify = False` ligne 11) | **Vrai problème** : vérification TLS désactivée, une interception (homme du milieu) sur l'environnement de recette permet de voler identifiants et jetons. |
+| `B608` hardcoded_sql_expressions | 1 | `utils/db.py:29` (`f"... WHERE o.id = {order_id}"`) | **Vrai problème** (risque faible ici) : requête SQL construite par f-string ; utiliser un paramètre lié (`:order_id`), comme le fait déjà `execute()`. |
+| `B110` try_except_pass | 1 | `tests/api/test_promo.py:37` | **Vrai problème** : `try: ... assert ... except: pass` avale aussi l'`AssertionError`. `test_disable_promo` **ne peut jamais échouer** : c'est un test qui ment. |
+
+Bonus relevé en lisant `test_promo.py` : la fonction `code_nul()` (ligne 48) ne commence pas par `test_`, pytest ne l'exécute jamais.
+
+### 4. Workflow (zizmor)
+
+```
+zizmor --offline .github/workflows/ci.yml
+```
+
+Preuve : [`B1-zizmor.txt`](preuves/B1-zizmor.txt). `9 findings (3 suppressed)` → 6 affichés : 4 high, 1 medium, 1 low.
+
+| Constat | Ligne | Risque (en une phrase) |
+|---|---|---|
+| `template-injection` (high) | `ci.yml:23` — `echo "Bugs du fil rouge : ${{ github.event.inputs.seed_bugs }}"` | Le texte saisi dans le champ `seed_bugs` est collé tel quel dans le script shell : une valeur contenant `"; <commande>; "` exécute n'importe quelle commande sur le runner, avec le jeton du dépôt. |
+| `unpinned-uses` (high) | `ci.yml:19` `actions/checkout@v7`, `ci.yml:26` `actions/setup-python@v7`, `ci.yml:63` `actions/upload-artifact@v7` | Une étiquette `@v7` peut être déplacée : si le dépôt de l'action est compromis, du code malveillant s'exécute dans notre CI sans aucun changement de notre côté (attaque de la chaîne d'approvisionnement). |
+| `excessive-permissions` (medium) | `ci.yml:14` — job `tests` sans bloc `permissions:` | Le `GITHUB_TOKEN` reçoit les permissions par défaut, potentiellement en écriture : une étape compromise pourrait pousser du code ou modifier le dépôt. |
+| `artipacked` (low) | `ci.yml:19` — `actions/checkout@v7` sans `persist-credentials: false` | Le checkout laisse le jeton dans `.git/config` : si un jour le dossier entier est publié en artefact, le jeton fuit avec (ici seul `qa/reports/` est publié, d'où la confiance « Low »). |

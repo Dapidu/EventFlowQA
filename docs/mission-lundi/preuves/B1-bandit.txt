@@ -71,13 +71,13 @@ Test results:
 33	
 
 --------------------------------------------------
->> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'Passw0rd!'
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: '***MASQUE***'
    Severity: Low   Confidence: Medium
    CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
    Location: qa\tests\api\test_auth.py:37:75
 36	    email = f"{unique('reg')}@example.com"
-37	    first = anonymous_api.post("/api/auth/register", json={"email": email, "password": "Passw0rd!"})
+37	    first = anonymous_api.post("/api/auth/register", json={"email": email, "password": "***MASQUE***"})
 38	    assert first.status_code == 201
 
 --------------------------------------------------
@@ -86,7 +86,7 @@ Test results:
    CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html
    Location: qa\tests\api\test_auth.py:38:4
-37	    first = anonymous_api.post("/api/auth/register", json={"email": email, "password": "Passw0rd!"})
+37	    first = anonymous_api.post("/api/auth/register", json={"email": email, "password": "***MASQUE***"})
 38	    assert first.status_code == 201
 39	    assert first.json()["role"] == "client"
 
@@ -101,13 +101,13 @@ Test results:
 40	
 
 --------------------------------------------------
->> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'Passw0rd!'
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: '***MASQUE***'
    Severity: Low   Confidence: Medium
    CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
    Location: qa\tests\api\test_auth.py:41:76
 40	
-41	    second = anonymous_api.post("/api/auth/register", json={"email": email, "password": "Passw0rd!"})
+41	    second = anonymous_api.post("/api/auth/register", json={"email": email, "password": "***MASQUE***"})
 42	    assert second.status_code == 409
 
 --------------------------------------------------
@@ -116,7 +116,7 @@ Test results:
    CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html
    Location: qa\tests\api\test_auth.py:42:4
-41	    second = anonymous_api.post("/api/auth/register", json={"email": email, "password": "Passw0rd!"})
+41	    second = anonymous_api.post("/api/auth/register", json={"email": email, "password": "***MASQUE***"})
 42	    assert second.status_code == 409
 43	
 
@@ -593,17 +593,17 @@ Test results:
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b113_request_without_timeout.html
    Location: qa\tests\api\test_promo.py:7:8
 6	def get_token():
-7	    r = requests.post(URL + "/api/auth/token", data={"username": "admin@eventflow.test", "password": "admin1234"})
+7	    r = requests.post(URL + "/api/auth/token", data={"username": "admin@eventflow.test", "password": "***MASQUE***"})
 8	    return r.json()["access_token"]
 
 --------------------------------------------------
->> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'admin1234'
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: '***MASQUE***'
    Severity: Low   Confidence: Medium
    CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
    Location: qa\tests\api\test_promo.py:7:89
 6	def get_token():
-7	    r = requests.post(URL + "/api/auth/token", data={"username": "admin@eventflow.test", "password": "admin1234"})
+7	    r = requests.post(URL + "/api/auth/token", data={"username": "admin@eventflow.test", "password": "***MASQUE***"})
 8	    return r.json()["access_token"]
 
 --------------------------------------------------
@@ -694,17 +694,17 @@ Test results:
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b113_request_without_timeout.html
    Location: qa\tests\api\test_promo.py:42:8
 41	def test_client_cant_see_promos():
-42	    r = requests.post(URL + "/api/auth/token", data={"username": "client@eventflow.test", "password": "client1234"})
+42	    r = requests.post(URL + "/api/auth/token", data={"username": "client@eventflow.test", "password": "***MASQUE***"})
 43	    token = r.json()["access_token"]
 
 --------------------------------------------------
->> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'client1234'
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: '***MASQUE***'
    Severity: Low   Confidence: Medium
    CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
    Location: qa\tests\api\test_promo.py:42:90
 41	def test_client_cant_see_promos():
-42	    r = requests.post(URL + "/api/auth/token", data={"username": "client@eventflow.test", "password": "client1234"})
+42	    r = requests.post(URL + "/api/auth/token", data={"username": "client@eventflow.test", "password": "***MASQUE***"})
 43	    token = r.json()["access_token"]
 
 --------------------------------------------------
@@ -836,23 +836,23 @@ Test results:
 88	    assert all(e["status"] == "published" for e in r.json())
 
 --------------------------------------------------
->> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'Passw0rd!'
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: '***MASQUE***'
    Severity: Low   Confidence: Medium
    CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
    Location: qa\tests\performance\locustfile.py:58:69
 57	        email = f"load-{uuid.uuid4().hex[:10]}@example.com"
-58	        self.client.post("/api/auth/register", json={"email": email, "password": "Passw0rd!"}, name="/api/auth/register")
-59	        r = self.client.post("/api/auth/token", data={"username": email, "password": "Passw0rd!"}, name="/api/auth/token")
+58	        self.client.post("/api/auth/register", json={"email": email, "password": "***MASQUE***"}, name="/api/auth/register")
+59	        r = self.client.post("/api/auth/token", data={"username": email, "password": "***MASQUE***"}, name="/api/auth/token")
 
 --------------------------------------------------
->> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'Passw0rd!'
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: '***MASQUE***'
    Severity: Low   Confidence: Medium
    CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
    Location: qa\tests\performance\locustfile.py:59:73
-58	        self.client.post("/api/auth/register", json={"email": email, "password": "Passw0rd!"}, name="/api/auth/register")
-59	        r = self.client.post("/api/auth/token", data={"username": email, "password": "Passw0rd!"}, name="/api/auth/token")
+58	        self.client.post("/api/auth/register", json={"email": email, "password": "***MASQUE***"}, name="/api/auth/register")
+59	        r = self.client.post("/api/auth/token", data={"username": email, "password": "***MASQUE***"}, name="/api/auth/token")
 60	        self.client.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
 
 --------------------------------------------------
@@ -1018,7 +1018,7 @@ Test results:
    CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html
    Location: qa\tests\ui\selenium_backoffice\test_backoffice.py:64:4
-63	    page = LoginPage(driver).open().login(config.ORGA_EMAIL, "pas-le-bon")
+63	    page = LoginPage(driver).open().login(config.ORGA_EMAIL, "***MASQUE***")
 64	    assert page.error_message() == "Incorrect email or password"
 
 --------------------------------------------------
@@ -1071,13 +1071,13 @@ Test results:
 30	    return r.json()
 
 --------------------------------------------------
->> Issue: [B107:hardcoded_password_default] Possible hardcoded password: 'Passw0rd!'
+>> Issue: [B107:hardcoded_password_default] Possible hardcoded password: '***MASQUE***'
    Severity: Low   Confidence: Medium
    CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
    More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b107_hardcoded_password_default.html
    Location: qa\utils\factories.py:33:0
 32	
-33	def register_user(api: ApiClient, password="Passw0rd!"):
+33	def register_user(api: ApiClient, password="***MASQUE***"):
 34	    email = f"{unique('user')}@example.com"
 35	    r = api.post("/api/auth/register", json={"email": email, "password": password, "full_name": "QA User"})
 36	    assert r.status_code == 201, r.text

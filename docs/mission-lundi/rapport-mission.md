@@ -16,6 +16,7 @@ Ce rapport rassemble les preuves de chaque étape de la mission : commandes lanc
   - [B1 · La fouille du dépôt (audit outillé)](#b1--la-fouille-du-dépôt-audit-outillé)
   - B2 · Le rapport d'audit → [`docs/audit-securite.md`](../audit-securite.md)
   - [B3 · Blinder le pipeline](#b3--blinder-le-pipeline)
+- [Succès cachés (bonus)](#succès-cachés-bonus)
 
 ---
 
@@ -606,3 +607,65 @@ Non-régression : `pytest tests/api -n auto` → **59 passed**.
 ### CI sur GitHub après durcissement
 
 [Run 45186634585](https://github.com/Dapidu/EventFlowQA/actions/runs/45186634585) (commit `8d92a0c`) : **success**. Toutes les étapes sont vertes, y compris `actions/checkout@3d3c42e…`, `actions/setup-python@6d4fd22…` et `actions/upload-artifact@cf430e0…` épinglées par SHA, l'installation des dépendances épinglées et le rapport Allure 3.33.0. Les permissions réduites (`contents: read`) n'empêchent aucune étape de fonctionner.
+
+---
+
+## Succès cachés (bonus)
+
+### Fiche RCA de B1
+
+[`docs/rca/B1.md`](../rca/B1.md), même structure que B4. Découverte en cours d'analyse : le test de cohérence existant `test_no_category_is_oversold` (`qa/tests/api/test_db_consistency.py:54`) ne compte que les commandes `paid`, alors que la sur-réservation de A1 est faite de commandes `pending`. Il ne pouvait donc pas détecter B1.
+
+### Sortir `qa/.env` du dépôt
+
+| Étape | Fait |
+|---|---|
+| `git rm --cached qa/.env` | Fichier retiré de l'index, conservé sur le poste (les tests locaux le lisent toujours) |
+| Modèle | [`qa/.env.example`](../../qa/.env.example) : mêmes variables, mots de passe vides, `DB_URL` avec des marqueurs |
+| `.gitignore` | Ligne `qa/.env` ajoutée |
+| Secrets GitHub | `ADMIN_PASSWORD`, `ORGA_PASSWORD`, `CLIENT_PASSWORD` créés dans *Settings > Secrets and variables > Actions* (`gh secret set`, valeurs transmises depuis le fichier local sans être affichées) |
+| `ci.yml` | Les 3 secrets passés au job : `ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}`, etc. |
+| `qa/utils/config.py` | Valeurs par défaut des mots de passe **supprimées** : sinon un secret absent serait remplacé silencieusement par le mot de passe écrit dans le code, et sortir `qa/.env` ne servirait à rien |
+
+Vérifications : avec `qa/.env` local → `59 passed` ; sans `qa/.env` ni variable → échec explicite (`Login admin impossible`), au lieu d'un mot de passe codé en dur.
+
+Limite : le fichier reste lisible dans l'historique Git (commits antérieurs). Ce sont des mots de passe de comptes de démonstration ; pour de vrais comptes, il faudrait aussi les changer (même logique que la réponse à incident de B2).
+
+### 2e passe avec Betterleaks
+
+```
+betterleaks dir --redact --config .gitleaks.toml .
+WRN leaks found: 35
+```
+
+Preuve : [`preuves/bonus-betterleaks.txt`](preuves/bonus-betterleaks.txt). gitleaks : 0 dans les fichiers. Betterleaks : **35**, tous de la règle `generic-password` (affectations du type `password = "…"`, que gitleaks n'a pas) :
+
+| Fichier | Nb | Lignes | Analyse |
+|---|---|---|---|
+| `docs/mission-lundi/preuves/B1-bandit.txt` | 23 | — | **Notre propre preuve** : bandit recopie les lignes de code, mots de passe compris. Valeurs masquées depuis (`***MASQUE***`). Leçon : une preuve d'audit peut elle-même diffuser des secrets. |
+| `qa/.env` | 3 | 6, 8, 10 | `ADMIN_PASSWORD`, `ORGA_PASSWORD`, `CLIENT_PASSWORD` (vrai constat, traité ci-dessus) |
+| `docker-compose.yml` | 1 | 6 | `POSTGRES_PASSWORD` (constat #10 du rapport d'audit) |
+| `qa/tests/api/test_promo.py` | 2 | 7, 42 | Mots de passe admin et client en dur (constat #13) |
+| `qa/tests/api/test_auth.py` | 2 | 37, 41 | Compte jetable créé par le test : faux positif |
+| `qa/tests/performance/locustfile.py` | 2 | 58, 59 | Compte jetable : faux positif |
+| `qa/utils/factories.py` | 1 | 33 | Mot de passe par défaut d'un compte jetable : faux positif |
+| `qa/tests/ui/selenium_backoffice/test_backoffice.py` | 1 | 63 | **Nouveau** : mauvais mot de passe volontaire (`test_login_with_wrong_password_shows_error`) : faux positif |
+
+Après masquage, il reste dans les preuves des motifs `"password": password` (une variable, pas une valeur) et la valeur masquée elle-même : faux positifs.
+
+### Dependabot
+
+[`.github/dependabot.yml`](../../.github/dependabot.yml) : écosystèmes `pip` (`/qa`) et `github-actions` (`/`), hebdomadaire, vers `eventflow-qa`, avec un délai de 7 jours (`cooldown`) avant de proposer une nouvelle version, ajouté suite au constat `dependabot-cooldown` de zizmor. Après ajout : `zizmor --offline .github/` → `No findings to report`.
+
+Sur un fork, le fichier ne suffit pas : **Settings > Advanced Security > Dependabot version updates** doit être activé à la main dans l'interface GitHub.
+
+### Probabilité qu'un test instable passe avec 3 reruns
+
+Un test échoue 35 % du temps (p = 0,35). `reruns=3` = 1 essai + 3 relances = **4 essais**. Le test n'est rouge que si les 4 échouent (essais indépendants) :
+
+```
+P(rouge) = 0,35⁴ = 0,0150   → 1,5 %
+P(vert)  = 1 − 0,35⁴ = 0,9850 → 98,5 %
+```
+
+Sans relance, ce test serait vert 65 % du temps ; avec 3 reruns, **98,5 %**. Un défaut réel qui se manifeste une fois sur trois devient presque invisible : sur 10 runs de CI, il n'y a que 14 % de chances (1 − 0,985¹⁰) de voir au moins un rouge. C'est pour cela qu'A4 a retiré les `@pytest.mark.flaky(reruns=3)`.

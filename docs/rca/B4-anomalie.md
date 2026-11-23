@@ -55,7 +55,7 @@ Ce n'est pas un test instable : même message d'échec à chaque lancement.
 - réponse : `201`, `{"id":55,"status":"pending","total_cents":2975,"items":[{"category_id":98,"quantity":1,"unit_price_cents":3500}], ...}`
 - page suivante : `/checkout/55`
 
-<!-- Capture de la trace : glisser l'image ici -->
+![Trace Viewer : saisie EXPIRED, arrivée sur la page Paiement à 29,75 €, échec de l'attente sur .notice-err](https://github.com/Dapidu/EventFlowQA/blob/mission-lundi/docs/mission-lundi/captures/A2-trace-post-orders.png?raw=true)
 
 **Base de données** — le code est bien expiré :
 

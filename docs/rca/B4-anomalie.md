@@ -57,6 +57,10 @@ Ce n'est pas un test instable : même message d'échec à chaque lancement.
 
 ![Trace Viewer : saisie EXPIRED, arrivée sur la page Paiement à 29,75 €, échec de l'attente sur .notice-err](https://github.com/Dapidu/EventFlowQA/blob/mission-lundi/docs/mission-lundi/captures/A2-trace-post-orders.png?raw=true)
 
+![Trace Viewer, onglet Network : POST /api/orders avec EXPIRED, réponse 201 Created](https://github.com/Dapidu/EventFlowQA/blob/mission-lundi/docs/mission-lundi/captures/A2-trace-network.png?raw=true)
+
+*Trace Viewer, onglet Network : `POST /api/orders` envoyé avec le code EXPIRED, réponse **201 Created** (attendu : 400). En-tête `Authorization` masqué.*
+
 **Base de données** — le code est bien expiré :
 
 ```

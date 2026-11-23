@@ -226,6 +226,10 @@ Le front se comporte correctement : il reçoit un 201 et passe au paiement.
 
 *Trace Viewer : `Fill "EXPIRED"` → `Click` « Continuer vers le paiement » → page Paiement `/checkout/55` à 29,75 € (remise appliquée) → `Expect "to_have_text"` sur `.notice-err` échoue après 5 s.*
 
+![Trace Viewer, onglet Network : POST /api/orders avec EXPIRED, réponse 201 Created](captures/A2-trace-network.png)
+
+*Trace Viewer, onglet Network : `POST /api/orders` envoyé avec le code EXPIRED, réponse **201 Created** (attendu : 400). En-tête `Authorization` masqué.*
+
 ### 6. Base de données et code
 
 ```powershell

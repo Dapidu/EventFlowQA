@@ -602,3 +602,7 @@ No known vulnerabilities found
 ```
 
 Non-régression : `pytest tests/api -n auto` → **59 passed**.
+
+### CI sur GitHub après durcissement
+
+[Run 45186634585](https://github.com/Dapidu/EventFlowQA/actions/runs/45186634585) (commit `8d92a0c`) : **success**. Toutes les étapes sont vertes, y compris `actions/checkout@3d3c42e…`, `actions/setup-python@6d4fd22…` et `actions/upload-artifact@cf430e0…` épinglées par SHA, l'installation des dépendances épinglées et le rapport Allure 3.33.0. Les permissions réduites (`contents: read`) n'empêchent aucune étape de fonctionner.

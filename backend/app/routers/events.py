@@ -37,12 +37,20 @@ def list_events(
         # BUG B11 (fil rouge): la reponse omet le champ "capacity" (non conforme au schema).
         data = []
         for e in events:
-            data.append({
-                "id": e.id, "title": e.title, "description": e.description or "",
-                "city": e.city, "venue": e.venue or "",
-                "starts_at": e.starts_at.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"),
-                "status": e.status, "cover_color": e.cover_color,
-            })
+            data.append(
+                {
+                    "id": e.id,
+                    "title": e.title,
+                    "description": e.description or "",
+                    "city": e.city,
+                    "venue": e.venue or "",
+                    "starts_at": e.starts_at.replace(tzinfo=timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                    "status": e.status,
+                    "cover_color": e.cover_color,
+                }
+            )
         return JSONResponse(content=data)
 
     query = db.query(Event).filter(Event.status == "published")
